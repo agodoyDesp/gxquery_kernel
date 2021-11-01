@@ -1,0 +1,8 @@
+{
+ "argv": ["python", "-m",
+          "gxQueryKernel", "-f",
+          "{connection_file}"],
+ "display_name": "GxQuery",
+ "name": "gxQuery",
+ "language": "text"
+}
