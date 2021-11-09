@@ -4,5 +4,5 @@
           "{connection_file}"],
  "display_name": "GxQuery",
  "name": "gxQuery",
- "language": "text"
+ "language": "text/html"
 }
