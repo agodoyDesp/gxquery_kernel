@@ -83,6 +83,47 @@ def set_metadata(session_token, gxquerycontext):
                                         data=get_query_name_dict, headers=get_query_name_headers)
 
     print(get_query_name_resp.text)
+    
+def execute_query_service(session_token, gxquerycontextout):
+    guid = gxquerycontextout["CurrentRepositoryGUID"]
+    sesid = gxquerycontextout["SessionId"]
+    usergui = gxquerycontextout["UserGUID"]
+    usernam = gxquerycontextout["UserName"]
+    metaid = gxquerycontextout["CurrentMetaId"]
+
+    url = "http://localhost:80/GXquery40/rest/GXquery_ExecuteQueryService"
+
+    execute_query_dict = json.dumps({
+        "GXqueryContext": {
+            "AppPath": "C:\\GXquery40\\web\\",
+            "CurrentKBLocation": "C:\\GXquery40\\KBCatalog\\" + metaid,
+            "CurrentVersionId": "0",
+            "CurrentMetaName": "TravelAgencyGX16",
+            "CurrentMetaId": metaid,
+            "CurrentRepositoryGUID": guid,
+            "CurrentRepositoryName": "GXquery",
+            "SessionId": sesid,
+            "UserGUID": usergui,
+            "UserName": usernam,
+            "UserType": "MetadataAdministrator",
+            "MultipleRepositories": False
+        },
+        "QueryName": "QueryAttractions",
+        "QueryViewerServicesVersion": 1,
+        "RuntimeParameters": [],
+        "OutputFormatId": "",
+        "ServiceOptions": []
+
+    })
+    execute_query_headers = {
+        'Authorization': session_token,
+        'GeneXus-Agent': 'SmartDevice',
+        'Content-Type': 'application/json',
+    }
+
+    response = requests.post(url, headers=execute_query_headers, data=execute_query_dict)
+    print("--------------------------------------------------------------------------------------------------------")
+    print(response.text)
 
 
 
