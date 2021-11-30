@@ -49,12 +49,12 @@ def set_metadata(session_token, gxquerycontext):
     print(set_metadata_resp.text)
     
     
- def get_query_by_name(session_token, gxquerycontext):
-    guid = gxquerycontext["CurrentRepositoryGUID"]
-    sesid = gxquerycontext["SessionId"]
-    usergui = gxquerycontext["UserGUID"]
-    usernam = gxquerycontext["UserName"]
-    metaid = gxquerycontext["CurrentMetaId"]
+ def get_query_by_name(session_token, gxquerycontextout):
+    guid = gxquerycontextout["CurrentRepositoryGUID"]
+    sesid = gxquerycontextout["SessionId"]
+    usergui = gxquerycontextout["UserGUID"]
+    usernam = gxquerycontextout["UserName"]
+    metaid = gxquerycontextout["CurrentMetaId"]
 
     get_query_name_dict = json.dumps({
         "QueryName": "QueryAttractions",
