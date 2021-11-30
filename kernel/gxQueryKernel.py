@@ -5,7 +5,7 @@ from ipykernel.kernelbase import Kernel
 
 
 def start_session():
-    start_session_data = {'RepositoryName': '', 'UserName': 'andres', 'Password': 'andres'}
+    start_session_data = {'RepositoryName': '', 'UserName': 'alexgo', 'Password': 'Alex-11041989'}
     start_session_data_resp = requests.post('http://localhost:80/GXquery40/rest/GXquery_StartSessionService',
                                             json=start_session_data)
     resp = json.loads(start_session_data_resp.text)
@@ -13,13 +13,42 @@ def start_session():
     return resp
 
 
-def set_metadata(session_token):
+def set_metadata(session_token, gxquerycontext):
     # Esta dando error el request
-    set_metadata_dict = {'CurrentMetaName': 'TravelAgencyGX16'}
-    set_metadata_headers = {'GeneXus-Agent': 'SmartDevice',
-                            'Authorization': 'OAuth' + session_token}
+
+    guid = gxquerycontext["CurrentRepositoryGUID"]
+    sesid = gxquerycontext["SessionId"]
+    usergui = gxquerycontext["UserGUID"]
+    usernam = gxquerycontext["UserName"]
+    set_metadata_dict = json.dumps({
+        "GXqueryContextIn": {
+            "AppPath": "C:\\GXquery40\\web\\",
+            "CurrentKBLocation": "",
+            "CurrentVersionId": "0",
+            "CurrentMetaName": "",
+            "CurrentMetaId": "",
+            "CurrentRepositoryGUID": guid,
+            "CurrentRepositoryName": "GXquery",
+            "SessionId": sesid,
+            "UserGUID": usergui,
+            "UserName": usernam,
+            "UserType": "MetadataAdministrator",
+            "MultipleRepositories": False
+        },
+        "MetadataName": "TravelAgencyGX16"
+    })
+    set_metadata_headers = {
+                    'GeneXus-Agent': 'SmartDevice',
+                    'Authorization': session_token,
+                    'Content-Type': 'application/json'
+    }
+
     set_metadata_resp = requests.post('http://localhost:80/GXquery40/rest/GXquery_SetMetadataService',
-                                      json=set_metadata_dict, headers=set_metadata_headers)
+                                      data=set_metadata_dict, headers=set_metadata_headers)
+
+    print(set_metadata_resp.text)
+
+
 
 
 class GxQueryKernel(Kernel):
