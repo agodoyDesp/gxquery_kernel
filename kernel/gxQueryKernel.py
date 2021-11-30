@@ -38,18 +38,19 @@ def set_metadata(session_token, gxquerycontext):
         "MetadataName": "TravelAgencyGX16"
     })
     set_metadata_headers = {
-                    'GeneXus-Agent': 'SmartDevice',
-                    'Authorization': session_token,
-                    'Content-Type': 'application/json'
+        'GeneXus-Agent': 'SmartDevice',
+        'Authorization': session_token,
+        'Content-Type': 'application/json'
     }
 
     set_metadata_resp = requests.post('http://localhost:80/GXquery40/rest/GXquery_SetMetadataService',
                                       data=set_metadata_dict, headers=set_metadata_headers)
+    resp = json.loads(set_metadata_resp.text)
 
-    print(set_metadata_resp.text)
-    
-    
- def get_query_by_name(session_token, gxquerycontextout):
+    return resp
+
+
+def get_query_by_name(session_token, gxquerycontextout):
     guid = gxquerycontextout["CurrentRepositoryGUID"]
     sesid = gxquerycontextout["SessionId"]
     usergui = gxquerycontextout["UserGUID"]
@@ -60,7 +61,7 @@ def set_metadata(session_token, gxquerycontext):
         "QueryName": "QueryAttractions",
         "GXqueryContext": {
             "AppPath": "C:\\GXquery40\\web\\",
-            "CurrentKBLocation": "C:\\GXquery40\\KBCatalog\\"+metaid,
+            "CurrentKBLocation": "C:\\GXquery40\\KBCatalog\\" + metaid,
             "CurrentVersionId": "0",
             "CurrentMetaName": "TravelAgencyGX16",
             "CurrentMetaId": metaid,
@@ -83,7 +84,10 @@ def set_metadata(session_token, gxquerycontext):
                                         data=get_query_name_dict, headers=get_query_name_headers)
 
     print(get_query_name_resp.text)
-    
+    resp = json.loads(get_query_name_resp.text)
+    return resp
+
+
 def execute_query_service(session_token, gxquerycontextout):
     guid = gxquerycontextout["CurrentRepositoryGUID"]
     sesid = gxquerycontextout["SessionId"]
@@ -124,8 +128,8 @@ def execute_query_service(session_token, gxquerycontextout):
     response = requests.post(url, headers=execute_query_headers, data=execute_query_dict)
     print("--------------------------------------------------------------------------------------------------------")
     print(response.text)
-
-
+    resp = json.loads(response.text)
+    return resp
 
 
 class GxQueryKernel(Kernel):
@@ -153,7 +157,9 @@ class GxQueryKernel(Kernel):
         })
 
         start_session_data_resp = start_session()
-        set_metadata(start_session_data_resp['GXquerySessionToken'])
+        set_metadata_data_resp = set_metadata(start_session_data_resp["GXquerySessionToken"], start_session_data_resp["GXqueryContext"])
+        get_query_by_name(start_session_data_resp["GXquerySessionToken"], set_metadata_data_resp["GXqueryContextOut"])
+        execute_query_service(start_session_data_resp["GXquerySessionToken"], set_metadata_data_resp["GXqueryContextOut"])
 
         return {'status': 'ok',
                 'execution_count':
