@@ -1,12 +1,14 @@
 import requests
 import json
 import constants
+import xmltodict
 
 from ipykernel.kernelbase import Kernel
+from prettytable import PrettyTable
 
 
 def start_session():
-    url = constants.BASE_URL+'/GXquery_StartSessionService'
+    url = constants.BASE_URL + '/GXquery_StartSessionService'
     start_session_data = {'RepositoryName': '', 'UserName': 'andres', 'Password': 'andres'}
     start_session_data_resp = requests.post(url, json=start_session_data)
     resp = json.loads(start_session_data_resp.text)
@@ -29,7 +31,7 @@ def set_metadata(headers, gxquery_context):
     sesid = gxquery_context["SessionId"]
     usergui = gxquery_context["UserGUID"]
     usernam = gxquery_context["UserName"]
-    url = constants.BASE_URL+'/GXquery_SetMetadataService'
+    url = constants.BASE_URL + '/GXquery_SetMetadataService'
 
     set_metadata_dict = json.dumps({
         'GXqueryContextIn': gxquery_context,
@@ -41,10 +43,10 @@ def set_metadata(headers, gxquery_context):
     return json.loads(resp.text)
 
 
-def get_query_by_name(headers, gxquery_context):
-    url = constants.BASE_URL+'/GXquery_GetQueryByNameService'
+def get_query_by_name(query_name, headers, gxquery_context):
+    url = constants.BASE_URL + '/GXquery_GetQueryByNameService'
     get_query_by_name_dict = json.dumps({
-        'QueryName': constants.QUERY_NAME,
+        'QueryName': query_name,
         'GXqueryContext': gxquery_context
     })
 
@@ -53,10 +55,10 @@ def get_query_by_name(headers, gxquery_context):
     return json.loads(resp.text)
 
 
-def execute_query(headers, gxquery_context):
+def execute_query(query_name, headers, gxquery_context):
     url = constants.BASE_URL + '/GXquery_ExecuteQueryService'
     execute_query_dict = json.dumps({
-        'QueryName': constants.QUERY_NAME,
+        'QueryName': query_name,
         'QueryViewerServicesVersion': 1,
         'RuntimeParameters': [],
         'OutputFormatId': "",
@@ -67,6 +69,23 @@ def execute_query(headers, gxquery_context):
     resp = requests.post(url, data=execute_query_dict, headers=headers)
 
     return json.loads(resp.text)
+
+
+def build_table(execute_query_resp):
+    query_result = execute_query_resp['GXqueryExecuteQueryResult']
+    column_names_xml = xmltodict.parse(query_result['GetMetadata'])
+    table = PrettyTable()
+    col_names = []
+    for name in column_names_xml['OLAPCube']['OLAPDimension']:
+        col_names.append(name['@displayName'])  # insetar usando el valor dataField para el orden de las columnas
+    table.field_names = col_names
+    row_data_xml = xmltodict.parse(query_result['GetData'])
+    rows_xml = row_data_xml['Recordset']['Page']['Record']
+    for row in rows_xml:
+        table.add_row(list(row.values()))
+    table.format = True
+    html_string = table.get_html_string()
+    return html_string
 
 
 class GxQueryKernel(Kernel):
@@ -82,22 +101,23 @@ class GxQueryKernel(Kernel):
     banner = "Rest test kernel "
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None, allow_stdin=False):
-        response = requests.get('http://localhost:5000/' + code)
+        # response = requests.get('http://localhost:5000/' + code)
         # stream_content = {'name': 'stdout', 'text': response.text}
         # self.send_response(self.iopub_socket,
         #                   'stream', stream_content)
 
-        self.send_response(self.iopub_socket, 'display_data', {
-            'metadata': {},
-            'data': {
-                'text/html': response.text}
-        })
-
         start_session_data_resp = start_session()
         headers = set_headers(start_session_data_resp['GXquerySessionToken'])
         set_metadata_resp = set_metadata(headers, start_session_data_resp["GXqueryContext"])
-        get_query_by_name_resp = get_query_by_name(headers, set_metadata_resp["GXqueryContextOut"])
-        execute_query_resp = execute_query(headers, set_metadata_resp["GXqueryContextOut"])
+        # get_query_by_name_resp = get_query_by_name(headers, set_metadata_resp["GXqueryContextOut"])
+        execute_query_resp = execute_query(code, headers, set_metadata_resp["GXqueryContextOut"])
+        table = build_table(execute_query_resp)
+
+        self.send_response(self.iopub_socket, 'display_data', {
+            'metadata': {},
+            'data': {
+                'text/html': table}
+        })
 
         return {'status': 'ok',
                 'execution_count':
