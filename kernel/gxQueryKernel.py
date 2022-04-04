@@ -39,7 +39,7 @@ def set_metadata(headers, gxquery_context):
     })
 
     resp = requests.post(url, data=set_metadata_dict, headers=headers)
-    print(resp.text)
+    print('metaData' + resp.text)
     return json.loads(resp.text)
 
 
@@ -89,6 +89,21 @@ def build_table(execute_query_resp):
 
 
 class GxQueryKernel(Kernel):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        start_session_data_resp = start_session()
+        self.headers = set_headers(start_session_data_resp['GXquerySessionToken'])
+        self.set_metadata_resp = set_metadata(self.headers, start_session_data_resp["GXqueryContext"])
+
+    async def do_debug_request(self, msg):
+        pass
+
+    def do_apply(self, content, bufs, msg_id, reply_metadata):
+        pass
+
+    def do_clear(self):
+        pass
+
     implementation = 'TestRest'
     implementation_version = '1.0'
     language = 'no-op'
@@ -106,11 +121,8 @@ class GxQueryKernel(Kernel):
         # self.send_response(self.iopub_socket,
         #                   'stream', stream_content)
 
-        start_session_data_resp = start_session()
-        headers = set_headers(start_session_data_resp['GXquerySessionToken'])
-        set_metadata_resp = set_metadata(headers, start_session_data_resp["GXqueryContext"])
         # get_query_by_name_resp = get_query_by_name(headers, set_metadata_resp["GXqueryContextOut"])
-        execute_query_resp = execute_query(code, headers, set_metadata_resp["GXqueryContextOut"])
+        execute_query_resp = execute_query(code, self.headers, self.set_metadata_resp["GXqueryContextOut"])
         table = build_table(execute_query_resp)
 
         self.send_response(self.iopub_socket, 'display_data', {
