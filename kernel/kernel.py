@@ -2,18 +2,27 @@ import requests
 import json
 import constants
 import xmltodict
+import pandas
 
 from ipykernel.kernelbase import Kernel
-from prettytable import PrettyTable
 
 
 def start_session():
     url = constants.BASE_URL + '/GXquery_StartSessionService'
     start_session_data = {'RepositoryName': '', 'UserName': 'andres', 'Password': 'andres'}
     start_session_data_resp = requests.post(url, json=start_session_data)
-    resp = json.loads(start_session_data_resp.text)
 
-    return resp
+    return json.loads(start_session_data_resp.text)
+
+
+def end_session(headers, gxquery_context):
+    url = constants.BASE_URL + '/GXquery_EndSessionService'
+    end_session_dict = json.dumps({
+        'GXqueryContext': gxquery_context
+    })
+
+    resp = requests.post(url, data=end_session_dict, headers=headers)
+    return resp.status_code
 
 
 def set_headers(session_token):
@@ -27,10 +36,6 @@ def set_headers(session_token):
 
 
 def set_metadata(headers, gxquery_context):
-    guid = gxquery_context["CurrentRepositoryGUID"]
-    sesid = gxquery_context["SessionId"]
-    usergui = gxquery_context["UserGUID"]
-    usernam = gxquery_context["UserName"]
     url = constants.BASE_URL + '/GXquery_SetMetadataService'
 
     set_metadata_dict = json.dumps({
@@ -74,18 +79,28 @@ def execute_query(query_name, headers, gxquery_context):
 def build_table(execute_query_resp):
     query_result = execute_query_resp['GXqueryExecuteQueryResult']
     column_names_xml = xmltodict.parse(query_result['GetMetadata'])
-    table = PrettyTable()
     col_names = []
     for name in column_names_xml['OLAPCube']['OLAPDimension']:
         col_names.append(name['@displayName'])  # insetar usando el valor dataField para el orden de las columnas
-    table.field_names = col_names
     row_data_xml = xmltodict.parse(query_result['GetData'])
     rows_xml = row_data_xml['Recordset']['Page']['Record']
-    for row in rows_xml:
-        table.add_row(list(row.values()))
-    table.format = True
-    html_string = table.get_html_string()
-    return html_string
+    df = pandas.DataFrame(rows_xml)
+    df.columns = col_names
+    cell_hover = {
+        'selector': 'td:hover',
+        'props': [('background-color', '#ffffb3')]
+    }
+    index_names = {
+        'selector': '.index_name',
+        'props': 'font-style: italic; color: darkgrey; font-weight:normal;'
+    }
+    headers = {
+        'selector': 'th:not(.index_name)',
+        'props': 'background-color: #000066; color: white;'
+    }
+    df.style.set_table_styles([cell_hover, index_names, headers])
+    #return df.style.to_html()
+    return df.to_html(notebook=True, index=False)
 
 
 class GxQueryKernel(Kernel):
@@ -104,16 +119,16 @@ class GxQueryKernel(Kernel):
     def do_clear(self):
         pass
 
-    implementation = 'TestRest'
+    implementation = 'gxQuery_kernel'
     implementation_version = '1.0'
-    language = 'no-op'
+    language = 'gxQuery'
     language_version = '0.1'
     language_info = {
         'name': 'gxQuery',
         'mimetype': 'text/html',
         'file_extension': '.html',
     }
-    banner = "Rest test kernel "
+    banner = "GxQuery kernel "
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None, allow_stdin=False):
         # response = requests.get('http://localhost:5000/' + code)
@@ -137,6 +152,10 @@ class GxQueryKernel(Kernel):
                 'payload': [],
                 'user_expressions': {},
                 }
+
+    def do_shutdown(self, restart):
+        end_session(self.headers, self.set_metadata_resp["GXqueryContextOut"])
+        return {'restart': restart}
 
 
 if __name__ == '__main__':
