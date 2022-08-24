@@ -131,12 +131,6 @@ class GxQueryKernel(Kernel):
     banner = "GxQuery kernel "
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None, allow_stdin=False):
-        # response = requests.get('http://localhost:5000/' + code)
-        # stream_content = {'name': 'stdout', 'text': response.text}
-        # self.send_response(self.iopub_socket,
-        #                   'stream', stream_content)
-
-        # get_query_by_name_resp = get_query_by_name(headers, set_metadata_resp["GXqueryContextOut"])
         execute_query_resp = execute_query(code, self.headers, self.set_metadata_resp["GXqueryContextOut"])
         table = build_table(execute_query_resp)
 
