@@ -9,7 +9,7 @@ from ipykernel.kernelbase import Kernel
 
 def start_session():
     url = constants.BASE_URL + '/GXquery_StartSessionService'
-    start_session_data = {'RepositoryName': '', 'UserName': 'andres', 'Password': 'andres'}
+    start_session_data = {'RepositoryName': '', 'UserName': constants.USERNAME, 'Password': constants.PASSWORD}
     start_session_data_resp = requests.post(url, json=start_session_data)
 
     return json.loads(start_session_data_resp.text)
@@ -56,7 +56,6 @@ def get_query_by_name(query_name, headers, gxquery_context):
     })
 
     resp = requests.post(url, data=get_query_by_name_dict, headers=headers)
-
     return json.loads(resp.text)
 
 
@@ -72,18 +71,20 @@ def execute_query(query_name, headers, gxquery_context):
     })
 
     resp = requests.post(url, data=execute_query_dict, headers=headers)
-
     return json.loads(resp.text)
 
 
 def build_table(execute_query_resp):
     query_result = execute_query_resp['GXqueryExecuteQueryResult']
+    # get column names
     column_names_xml = xmltodict.parse(query_result['GetMetadata'])
     col_names = []
     for name in column_names_xml['OLAPCube']['OLAPDimension']:
-        col_names.append(name['@displayName'])  # insetar usando el valor dataField para el orden de las columnas
+        col_names.append(name['@displayName'])
+    # get row data
     row_data_xml = xmltodict.parse(query_result['GetData'])
     rows_xml = row_data_xml['Recordset']['Page']['Record']
+    # set column names and data in dataFrame
     df = pandas.DataFrame(rows_xml)
     df.columns = col_names
     cell_hover = {
@@ -99,11 +100,11 @@ def build_table(execute_query_resp):
         'props': 'background-color: #000066; color: white;'
     }
     df.style.set_table_styles([cell_hover, index_names, headers])
-    #return df.style.to_html()
     return df.to_html(notebook=True, index=False)
 
 
 class GxQueryKernel(Kernel):
+    # Start session when the kernel loads in the notebook
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         start_session_data_resp = start_session()
